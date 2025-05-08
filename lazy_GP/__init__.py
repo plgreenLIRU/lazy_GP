@@ -1,1 +1,1 @@
-from .lazy_GP import Lazy_GP
+from .GP import GP

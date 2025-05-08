@@ -1,6 +1,6 @@
 import numpy as np
 
-class Lazy_GP():
+class GP():
     """
     A class implementing a lazy Gaussian Process (GP) with RBF ARD kernel.
     """
