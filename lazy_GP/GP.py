@@ -91,7 +91,7 @@ class GP():
         print(f"CG converged in {i+1} iterations.")
         return sol
 
-    def set_hyperparameters(self, X, y, theta, sigma):
+    def set_hyperparameters(self, X, y, theta, sigma, tol=0.001):
         """
         Sets the hyperparameters and precomputes the alpha vector for predictions.
 
@@ -109,7 +109,7 @@ class GP():
         self.y = y
         self.theta = theta
         self.sigma = sigma
-        self.alpha = self._conjugate_gradient(X=self.X, b=self.y, theta=self.theta, sigma=self.sigma, tol=0.001)
+        self.alpha = self._conjugate_gradient(X=self.X, b=self.y, theta=self.theta, sigma=self.sigma, tol=tol)
 
     def predict(self, X_star):
         """
