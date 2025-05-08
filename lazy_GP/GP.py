@@ -30,13 +30,15 @@ class GP():
         X1 = np.vstack(X1)
         X2 = np.vstack(X2)
 
-        N, D = X1.shape
-        result = np.zeros(N)
-        for n in range(N):
-            k_row = np.zeros(D)
+        N1, D = X1.shape
+        N2, D = X2.shape
+        result = np.zeros(N1)
+        for n in range(N1):
+            k_row = np.zeros(N2)
             for d in range(D):
                 sq_dist = (X1[n, d] - X2[:, d])**2
-                k_row = k_row + np.exp(-1 / (2 * theta**2) * sq_dist)
+                k_row = k_row - 1 / (2 * theta[d]**2) * sq_dist
+            k_row = np.exp(k_row)
             if X1_equal_X2:
                 k_row[n] = k_row[n] + sigma**2
             result[n] = np.dot(k_row, v)
