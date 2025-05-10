@@ -10,9 +10,9 @@ class ARGP(GP):
         Parameters:
         X (numpy.ndarray): Exogenous input data of shape (N, D).
         Y (numpy.ndarray): Target data of shape (N,).
+        N_AR (int): autoregressive order
 
         Returns:
-        tuple: A tuple (X_hat, Y_hat) where:
             - X_hat (numpy.ndarray): Combined AR and exogenous features.
             - Y_hat (numpy.ndarray): Target values as a column vector.
         """
@@ -37,6 +37,9 @@ class ARGP(GP):
         super().set_hyperparameters(X=X_AR, y=y_AR, theta=theta, sigma=sigma, tol=tol)
 
     def predict_full_model(self, X_star, y0):
+        """
+        Full model predictions
+        """
 
         assert len(y0) == self.N_AR
 
