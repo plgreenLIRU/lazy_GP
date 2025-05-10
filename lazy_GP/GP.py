@@ -44,6 +44,21 @@ class GP():
             result[n] = np.dot(k_row, v)
         return result
 
+    def _mv_dk(self, X, d_dash, v, theta):
+        """
+        Find dK_dtheta(d_dash) @ v
+        """
+        N, D = X.shape
+        result = np.zeros(N)    
+        for i in range(N):
+            dk_row = np.zeros(N)
+            for d in range(D):
+                dk_row = dk_row - 0.5 * (X[i, d] - X[:, d])**2
+            dk_row = np.exp(dk_row)
+            dk_row = dk_row * theta[d_dash]**-3 * (X[i, d_dash] - X[:, d_dash])**2
+            result[i] = np.dot(dk_row, v)
+        return result
+
     def _conjugate_gradient(self, X, b, theta, sigma, tol, sol0=None):
         """
         Solves the linear system K(X, X; theta) @ sol = b using the conjugate gradient method.
