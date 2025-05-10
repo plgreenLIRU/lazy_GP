@@ -48,3 +48,42 @@ def test_2D_regression():
     y_star_pred = m.predict(X_star)
     mse = mean_squared_error(y_star, y_star_pred)
     assert mse < 0.002
+
+def find_K_and_dK(X, theta, d_dash):
+    """
+    Long-winded way of evaluating K and dK / dtheta_d_dash, used for tests
+    """
+    N, D = np.shape(X)
+    K = np.ones([N, N])
+    dK_dtheta = np.zeros([N, N])
+    for i in range(N):
+        for j in range(N):
+            dK_dtheta[i, j] = theta[d_dash]**-3
+            for d in range(D):
+                K[i, j] *= np.exp(-0.5 * (X[i, d] - X[j, d])**2)
+                dK_dtheta[i, j] *= np.exp(-0.5 * (X[i, d] - X[j, d])**2)
+            dK_dtheta[i, j] *= (X[i, d_dash] - X[j, d_dash])**2
+    return K, dK_dtheta
+
+def test_matrix_vector_products():
+    
+    # Generate input data
+    np.random.seed(42)
+    N = 100
+    D = 2
+    X = np.random.uniform(-3, 3, (N, D))
+    sigma = 0.001
+    theta = np.array([1., 1.])
+    d_dash = 0
+
+    K, dK_dtheta = find_K_and_dK(X, theta, d_dash)
+    C = K + np.eye(N) * sigma**2
+    inv_C = np.linalg.inv(C)
+    v = np.random.randn(N)
+
+    gp = GP()
+
+    assert np.allclose(C @ v, gp._mv_k(X1=X, X2=X, v=v, theta=theta, sigma=0.001, X1_equal_X2=True))
+    assert np.allclose(dK_dtheta @ v, gp._mv_dk(X, d_dash, v, theta))
+    assert np.abs(gp._tr_invK_dK(X, theta, sigma, d_dash, S=100) - np.trace(inv_C @ dK_dtheta)) < 100
+    

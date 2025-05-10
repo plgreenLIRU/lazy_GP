@@ -46,8 +46,24 @@ class GP():
 
     def _mv_dk(self, X, d_dash, v, theta):
         """
-        Find dK_dtheta(d_dash) @ v
+        Lazily computes the derivative of the kernel matrix with respect to a specific 
+        length-scale parameter (theta[d_dash]) and multiplies it by a vector v.
+
+        Parameters:
+        - X: np.ndarray, shape (N, D)
+            Input points.
+        - d_dash: int
+            Index of the length-scale parameter with respect to which the derivative is computed.
+        - v: np.ndarray, shape (N,)
+            Vector to multiply with the derivative of the kernel matrix.
+        - theta: np.ndarray, shape (D,)
+            Length-scale parameters for the RBF kernel.
+
+        Returns:
+        - result: np.ndarray, shape (N,)
+            Result of the matrix-vector multiplication with the derivative of the kernel matrix.
         """
+
         N, D = X.shape
         result = np.zeros(N)    
         for i in range(N):
@@ -59,7 +75,38 @@ class GP():
             result[i] = np.dot(dk_row, v)
         return result
 
-    def _conjugate_gradient(self, X, b, theta, sigma, tol, sol0=None):
+    def _tr_invK_dK(self, X, theta, sigma, d_dash, S=10):
+        """
+        Approximates the trace of the product of the inverse kernel matrix and 
+        the derivative of the kernel matrix with respect to a specific length-scale parameter.
+        Is needed as part of evaluating the gradient of the log-likelihood.
+
+        Parameters:
+        - X: np.ndarray, shape (N, D)
+            Input points.
+        - theta: np.ndarray, shape (D,)
+            Length-scale parameters for the RBF kernel.
+        - sigma: float
+            Noise standard deviation.
+        - d_dash: int
+            Index of the length-scale parameter with respect to which the derivative is computed.
+        - S: int, optional (default=10)
+            Number of Monte Carlo samples used for the approximation.
+
+        Returns:
+        - final_tr_term: float
+            Approximated trace term.
+        """        
+        N = X.shape[0]
+        final_tr_term = 0
+        for i in range(S):
+            z = np.random.randn(N)
+            q = self._conjugate_gradient(X, z, theta, sigma, tol=0.001)
+            final_tr_term += q @ self._mv_dk(X, d_dash, z, theta)
+        final_tr_term /= S
+        return final_tr_term
+
+    def _conjugate_gradient(self, X, b, theta, sigma, tol, sol0=None, verbose=False):
         """
         Solves the linear system K(X, X; theta) @ sol = b using the conjugate gradient method.
 
@@ -102,8 +149,9 @@ class GP():
                 break
             p = r + (r_new / r_old) * p
             r_old = r_new
-
-        print(f"CG converged in {i+1} iterations.")
+        
+        if verbose:
+            print(f"CG converged in {i+1} iterations.")
         return sol
 
     def set_hyperparameters(self, X, y, theta, sigma):
