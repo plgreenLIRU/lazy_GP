@@ -106,6 +106,23 @@ class GP():
         final_tr_term /= S
         return final_tr_term
 
+    def _find_exact_matrices(self, X, theta, sigma, d_dash):
+        # Only used for tests
+
+        N, D = np.shape(X)
+        K = np.ones([N, N])
+        dK_dtheta = np.zeros([N, N])
+        for i in range(N):
+            for j in range(N):
+                dK_dtheta[i, j] = theta[d_dash]**-3
+                for d in range(D):
+                    K[i, j] *= np.exp(-0.5 * (X[i, d] - X[j, d])**2)
+                    dK_dtheta[i, j] *= np.exp(-0.5 * (X[i, d] - X[j, d])**2)
+                dK_dtheta[i, j] *= (X[i, d_dash] - X[j, d_dash])**2
+        C = K + np.eye(N) * sigma**2
+        inv_C = np.linalg.inv(C)
+        return K, C, inv_C, dK_dtheta
+
     def _conjugate_gradient(self, X, b, theta, sigma, sol0=None, verbose=False):
         """
         Solves the linear system K(X, X; theta) @ sol = b using the conjugate gradient method.
