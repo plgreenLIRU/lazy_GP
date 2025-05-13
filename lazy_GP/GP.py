@@ -36,7 +36,7 @@ class GP():
         for n in range(N1):
             k_row = np.zeros(N2)
             for d in range(D):
-                sq_dist = (X1[n, d] - X2[:, d])**2
+                sq_dist = (X1[n, d] - X2[:, d].T)**2
                 k_row = k_row - 1 / (2 * theta[d]**2) * sq_dist
             k_row = np.exp(k_row)
             if X1_equal_X2:
@@ -71,7 +71,7 @@ class GP():
             for d in range(D):
                 dk_row = dk_row - 0.5 * (X[i, d] - X[:, d])**2
             dk_row = np.exp(dk_row)
-            dk_row = dk_row * theta[d_dash]**-3 * (X[i, d_dash] - X[:, d_dash])**2
+            dk_row = dk_row * theta[d_dash]**-3 * (X[i, d_dash] - X[:, d_dash].T)**2
             result[i] = np.dot(dk_row, v)
         return result
 
@@ -153,6 +153,12 @@ class GP():
         if verbose:
             print(f"CG converged in {i+1} iterations.")
         return sol
+
+    def dlogp(self, X, y, theta, sigma, d_dash, tol, S=10):
+        alpha = self._conjugate_gradient(X=X, b=y[:, 0], theta=theta, sigma=sigma, tol=tol)
+        g = 0.5 * alpha @ self._mv_dk(X=X, d_dash=d_dash, v=alpha, theta=theta)
+        g = g - self._tr_invK_dK(X=X, theta=theta, sigma=sigma, d_dash=d_dash, S=S)
+        return g
 
     def set_hyperparameters(self, X, y, theta, sigma, tol=0.001):
         """
