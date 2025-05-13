@@ -56,22 +56,6 @@ def test_2D_regression():
     mse = mean_squared_error(y_star, y_star_pred)
     assert mse < 0.005
 
-def find_K_and_dK(X, theta, d_dash):
-    """
-    Long-winded way of evaluating K and dK / dtheta_d_dash, used for tests
-    """
-    N, D = np.shape(X)
-    K = np.ones([N, N])
-    dK_dtheta = np.zeros([N, N])
-    for i in range(N):
-        for j in range(N):
-            dK_dtheta[i, j] = theta[d_dash]**-3
-            for d in range(D):
-                K[i, j] *= np.exp(-1 / (2 * theta[d]**2) * (X[i, d] - X[j, d])**2)
-                dK_dtheta[i, j] *= np.exp(-0.5 * (X[i, d] - X[j, d])**2)
-            dK_dtheta[i, j] *= (X[i, d_dash] - X[j, d_dash])**2
-    return K, dK_dtheta
-
 def test_mv_k():
     
     X, Y = generate_2D_data()[0:2]
@@ -81,12 +65,10 @@ def test_mv_k():
     theta = np.array([0.1, 0.5])
     d_dash = 0
 
-    K, dK_dtheta = find_K_and_dK(X, theta, d_dash)
-    C = K + np.eye(N) * sigma**2
-    inv_C = np.linalg.inv(C)
-    v = np.random.randn(N)
-
     gp = GP()
+
+    K, C, inv_C, dK_dtheta = gp._find_exact_matrices(X, theta, sigma, d_dash)
+    v = np.random.randn(N)
 
     assert np.allclose(C @ v, gp._mv_k(X1=X, X2=X, v=v, theta=theta, sigma=sigma, X1_equal_X2=True))    
     
@@ -99,12 +81,9 @@ def test_mv_dk():
     theta = np.array([1., 1.])
     d_dash = 0
 
-    K, dK_dtheta = find_K_and_dK(X, theta, d_dash)
-    C = K + np.eye(N) * sigma**2
-    inv_C = np.linalg.inv(C)
-    v = np.random.randn(N)
-
     gp = GP()
+    K, C, inv_C, dK_dtheta = gp._find_exact_matrices(X, theta, sigma, d_dash)
+    v = np.random.randn(N)
 
     assert np.allclose(dK_dtheta @ v, gp._mv_dk(X, d_dash, v, theta))
 
@@ -118,11 +97,8 @@ def test_tr_invK_dK():
     theta = np.array([1., 1.])
     d_dash = 0    
 
-    K, dK_dtheta = find_K_and_dK(X, theta, d_dash)
-    C = K + np.eye(N) * sigma**2
-    inv_C = np.linalg.inv(C)
-
     gp = GP()
+    K, C, inv_C, dK_dtheta = gp._find_exact_matrices(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
 
     exact_term = np.trace(inv_C @ dK_dtheta)
     mc_estimate = gp._tr_invK_dK(X=X, theta=theta, sigma=sigma, d_dash=d_dash, S=50)
