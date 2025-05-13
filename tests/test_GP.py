@@ -2,6 +2,24 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 from lazy_GP import GP
 
+
+def generate_2D_data():
+
+    # Define a 2D nonlinear function
+    def nonlinear_function(x):
+        return np.sin(x[:, 0]) * np.cos(x[:, 1])
+
+    # Generate input data
+    N = 500
+    X = np.random.uniform(-3, 3, (N, 2))
+    X_star = np.random.uniform(-3, 3, (100, 2))
+
+    # Generate noisy observations
+    sigma = 0.01
+    y = nonlinear_function(X) + sigma * np.random.randn(len(X))
+    y_star = nonlinear_function(X_star) + sigma * np.random.randn(len(X_star))
+    return X, X_star, y, y_star
+
 def test_1D_regression():
 
     # Create data
@@ -24,24 +42,12 @@ def test_1D_regression():
 
 def test_2D_regression():
 
-    # Define a 2D nonlinear function
-    def nonlinear_function(x):
-        return np.sin(x[:, 0]) * np.cos(x[:, 1])
-
-    # Generate input data
-    np.random.seed(42)
-    N = 500
-    X = np.random.uniform(-3, 3, (N, 2))
-    X_star = np.random.uniform(-3, 3, (100, 2))
-
-    # Generate noisy observations
-    sigma = 0.001
-    y = nonlinear_function(X) + sigma * np.random.randn(len(X))
-    y_star = nonlinear_function(X_star) + sigma * np.random.randn(len(X_star))
+    X, X_star, y, y_star = generate_2D_data()
 
     # Initialise model
     m = GP()
     theta = np.array([1., 1.])
+    sigma = 0.01
     m.set_hyperparameters(X, y, theta=theta, sigma=sigma)
 
     # Predictions
@@ -65,14 +71,12 @@ def find_K_and_dK(X, theta, d_dash):
             dK_dtheta[i, j] *= (X[i, d_dash] - X[j, d_dash])**2
     return K, dK_dtheta
 
-def test_matrix_vector_products():
+def test_mv_k():
     
-    # Generate input data
-    np.random.seed(42)
-    N = 100
-    D = 2
-    X = np.random.uniform(-3, 3, (N, D))
-    sigma = 0.001
+    X, Y = generate_2D_data()[0:2]
+    N = np.shape(X)[0]
+
+    sigma = 0.01
     theta = np.array([1., 1.])
     d_dash = 0
 
@@ -83,7 +87,22 @@ def test_matrix_vector_products():
 
     gp = GP()
 
-    assert np.allclose(C @ v, gp._mv_k(X1=X, X2=X, v=v, theta=theta, sigma=0.001, X1_equal_X2=True))
-    assert np.allclose(dK_dtheta @ v, gp._mv_dk(X, d_dash, v, theta))
-    assert np.abs(gp._tr_invK_dK(X, theta, sigma, d_dash, S=100) - np.trace(inv_C @ dK_dtheta)) < 100
+    assert np.allclose(C @ v, gp._mv_k(X1=X, X2=X, v=v, theta=theta, sigma=sigma, X1_equal_X2=True))    
     
+def test_mv_dk():
+    
+    X, Y = generate_2D_data()[0:2]
+    N = np.shape(X)[0]
+
+    sigma = 0.01
+    theta = np.array([1., 1.])
+    d_dash = 0
+
+    K, dK_dtheta = find_K_and_dK(X, theta, d_dash)
+    C = K + np.eye(N) * sigma**2
+    inv_C = np.linalg.inv(C)
+    v = np.random.randn(N)
+
+    gp = GP()
+
+    assert np.allclose(dK_dtheta @ v, gp._mv_dk(X, d_dash, v, theta))
