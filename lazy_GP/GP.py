@@ -154,12 +154,6 @@ class GP():
             print(f"CG converged in {i+1} iterations.")
         return sol
 
-    def dlogp(self, X, y, theta, sigma, d_dash, tol, S=10):
-        alpha = self._conjugate_gradient(X=X, b=y[:, 0], theta=theta, sigma=sigma, tol=tol)
-        g = 0.5 * alpha @ self._mv_dk(X=X, d_dash=d_dash, v=alpha, theta=theta)
-        g = g - self._tr_invK_dK(X=X, theta=theta, sigma=sigma, d_dash=d_dash, S=S)
-        return g
-
     def set_hyperparameters(self, X, y, theta, sigma, tol=0.001):
         """
         Sets the hyperparameters and precomputes the alpha vector for predictions.
