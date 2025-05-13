@@ -4,6 +4,8 @@ class GP():
     """
     A class implementing a lazy Gaussian Process (GP) with RBF ARD kernel.
     """
+    def __init__(self, tol=0.001):
+        self.tol = tol
 
     def _mv_k(self, X1, X2, v, theta, sigma, X1_equal_X2):
         """
@@ -128,7 +130,7 @@ class GP():
         inv_C = np.linalg.inv(C)
         return K, C, inv_C, dK_dtheta
 
-    def _conjugate_gradient(self, X, b, theta, sigma, sol0=None, verbose=True):
+    def _conjugate_gradient(self, X, b, theta, sigma, sol0=None, verbose=False):
         """
         Solves the linear system K(X, X; theta) @ sol = b using the conjugate gradient method.
 
@@ -156,8 +158,6 @@ class GP():
         else:
             sol = sol0.copy()
 
-        #tol = 1e-9
-
         r = b - self._mv_k(X, X, sol, theta, sigma, X1_equal_X2=True)
         p = r.copy()
         r_old = np.dot(r, r)
@@ -169,8 +169,8 @@ class GP():
             sol += alpha * p
             r -= alpha * Kp
             r_new = np.dot(r, r)
-            #if np.sqrt(r_new) < tol:
-            #    break
+            if np.sqrt(r_new) < self.tol:
+                break
             p = r + (r_new / r_old) * p
             r_old = r_new
         
