@@ -101,12 +101,12 @@ class GP():
         final_tr_term = 0
         for i in range(S):
             z = np.random.randn(N)
-            q = self._conjugate_gradient(X, z, theta, sigma, tol=0.001)
+            q = self._conjugate_gradient(X, z, theta, sigma)
             final_tr_term += q @ self._mv_dk(X, d_dash, z, theta)
         final_tr_term /= S
         return final_tr_term
 
-    def _conjugate_gradient(self, X, b, theta, sigma, tol, sol0=None, verbose=False):
+    def _conjugate_gradient(self, X, b, theta, sigma, sol0=None, verbose=False):
         """
         Solves the linear system K(X, X; theta) @ sol = b using the conjugate gradient method.
 
@@ -134,6 +134,8 @@ class GP():
         else:
             sol = sol0.copy()
 
+        #tol = 1e-9
+
         r = b - self._mv_k(X, X, sol, theta, sigma, X1_equal_X2=True)
         p = r.copy()
         r_old = np.dot(r, r)
@@ -145,8 +147,8 @@ class GP():
             sol += alpha * p
             r -= alpha * Kp
             r_new = np.dot(r, r)
-            if np.sqrt(r_new) < tol:
-                break
+            #if np.sqrt(r_new) < tol:
+            #    break
             p = r + (r_new / r_old) * p
             r_old = r_new
         
@@ -154,7 +156,7 @@ class GP():
             print(f"CG converged in {i+1} iterations.")
         return sol
 
-    def set_hyperparameters(self, X, y, theta, sigma, tol=0.001):
+    def set_hyperparameters(self, X, y, theta, sigma):
         """
         Sets the hyperparameters and precomputes the alpha vector for predictions.
 
