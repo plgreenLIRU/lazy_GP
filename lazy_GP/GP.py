@@ -101,8 +101,13 @@ class GP():
         final_tr_term = 0
         for i in range(S):
             z = np.random.randn(N)
-            q = self._conjugate_gradient(X, z, theta, sigma)
-            final_tr_term += q @ self._mv_dk(X, d_dash, z, theta)
+            q = self._conjugate_gradient(X=X, b=z, theta=theta, sigma=sigma)
+
+            K, C, inv_C, dK_dtheta = self._find_exact_matrices(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
+            #final_tr_term = final_tr_term + z @ inv_C @ dK_dtheta @ z
+            #final_tr_term = final_tr_term + z @ inv_C @ self._mv_dk(X=X, d_dash=d_dash, v=z, theta=theta)
+            final_tr_term = final_tr_term + q @ self._mv_dk(X=X, d_dash=d_dash, v=z, theta=theta)
+  
         final_tr_term /= S
         return final_tr_term
 
@@ -116,14 +121,14 @@ class GP():
             for j in range(N):
                 dK_dtheta[i, j] = theta[d_dash]**-3
                 for d in range(D):
-                    K[i, j] *= np.exp(-0.5 * (X[i, d] - X[j, d])**2)
+                    K[i, j] *= np.exp(-1 / (2 * theta[d]**2) * (X[i, d] - X[j, d])**2)
                     dK_dtheta[i, j] *= np.exp(-0.5 * (X[i, d] - X[j, d])**2)
                 dK_dtheta[i, j] *= (X[i, d_dash] - X[j, d_dash])**2
         C = K + np.eye(N) * sigma**2
         inv_C = np.linalg.inv(C)
         return K, C, inv_C, dK_dtheta
 
-    def _conjugate_gradient(self, X, b, theta, sigma, sol0=None, verbose=False):
+    def _conjugate_gradient(self, X, b, theta, sigma, sol0=None, verbose=True):
         """
         Solves the linear system K(X, X; theta) @ sol = b using the conjugate gradient method.
 
@@ -191,7 +196,7 @@ class GP():
         self.y = y
         self.theta = theta
         self.sigma = sigma
-        self.alpha = self._conjugate_gradient(X=self.X, b=self.y, theta=self.theta, sigma=self.sigma, tol=tol)
+        self.alpha = self._conjugate_gradient(X=self.X, b=self.y, theta=self.theta, sigma=self.sigma)
 
     def predict(self, X_star):
         """

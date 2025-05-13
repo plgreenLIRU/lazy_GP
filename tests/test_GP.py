@@ -67,7 +67,7 @@ def find_K_and_dK(X, theta, d_dash):
         for j in range(N):
             dK_dtheta[i, j] = theta[d_dash]**-3
             for d in range(D):
-                K[i, j] *= np.exp(-0.5 * (X[i, d] - X[j, d])**2)
+                K[i, j] *= np.exp(-1 / (2 * theta[d]**2) * (X[i, d] - X[j, d])**2)
                 dK_dtheta[i, j] *= np.exp(-0.5 * (X[i, d] - X[j, d])**2)
             dK_dtheta[i, j] *= (X[i, d_dash] - X[j, d_dash])**2
     return K, dK_dtheta
@@ -78,7 +78,7 @@ def test_mv_k():
     N = np.shape(X)[0]
 
     sigma = 0.01
-    theta = np.array([1., 1.])
+    theta = np.array([0.1, 0.5])
     d_dash = 0
 
     K, dK_dtheta = find_K_and_dK(X, theta, d_dash)

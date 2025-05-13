@@ -32,9 +32,9 @@ class ARGP(GP):
 
         return X_hat, Y_hat
     
-    def set_hyperparameters(self, X, y, theta, sigma, N_AR, tol=0.001):
+    def set_hyperparameters(self, X, y, theta, sigma, N_AR):
         X_AR, y_AR = self._prepare_arx_data(X, y, N_AR)
-        super().set_hyperparameters(X=X_AR, y=y_AR, theta=theta, sigma=sigma, tol=tol)
+        super().set_hyperparameters(X=X_AR, y=y_AR, theta=theta, sigma=sigma)
 
     def predict_full_model(self, X_star, y0):
         """
