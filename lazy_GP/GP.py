@@ -114,12 +114,23 @@ class GP():
         # Note; currently only w.r.t. theta
 
         g = np.zeros(np.shape(X)[1])
-        alpha = self._conjugate_gradient(X=X, b=y, theta=theta, sigma=sigma)
+        alpha = self._conjugate_gradient(X=X, b=y[:, 0], theta=theta, sigma=sigma)
         for d_dash in range(np.shape(X)[1]):
             g[d_dash] = -0.5 * self._tr_invK_dK(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
             g[d_dash] = g[d_dash] + 0.5 * alpha @ self._mv_dk(X=X, d_dash=d_dash, v=alpha, theta=theta)      
         return g
 
+    def _exact_dlogp(self, X, y, theta, sigma):
+        # Used for testing
+
+        g = np.zeros(np.shape(X)[1])
+        for d_dash in range(np.shape(X)[1]):
+            K, C, inv_C, dK_dtheta = self._find_exact_matrices(X, theta, sigma, d_dash)
+            g[d_dash] = -0.5 * np.trace(inv_C @ dK_dtheta)
+            alpha = inv_C @ y
+            g[d_dash] = g[d_dash] + 0.5 * alpha.T @ dK_dtheta @ alpha
+        return g
+        
     def _find_exact_matrices(self, X, theta, sigma, d_dash):
         # Only used for tests
 
