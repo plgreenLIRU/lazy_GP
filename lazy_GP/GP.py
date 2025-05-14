@@ -4,8 +4,9 @@ class GP():
     """
     A class implementing a lazy Gaussian Process (GP) with RBF ARD kernel.
     """
-    def __init__(self, tol=0.001):
+    def __init__(self, S=10, tol=0.001):
         self.tol = tol
+        self.S = S
 
     def _mv_k(self, X1, X2, v, theta, sigma, X1_equal_X2):
         """
@@ -77,7 +78,7 @@ class GP():
             result[i] = np.dot(dk_row, v)
         return result
 
-    def _tr_invK_dK(self, X, theta, sigma, d_dash, S=10):
+    def _tr_invK_dK(self, X, theta, sigma, d_dash):
         """
         Approximates the trace of the product of the inverse kernel matrix and 
         the derivative of the kernel matrix with respect to a specific length-scale parameter.
@@ -92,8 +93,6 @@ class GP():
             Noise standard deviation.
         - d_dash: int
             Index of the length-scale parameter with respect to which the derivative is computed.
-        - S: int, optional (default=10)
-            Number of Monte Carlo samples used for the approximation.
 
         Returns:
         - final_tr_term: float
@@ -101,17 +100,25 @@ class GP():
         """        
         N = X.shape[0]
         final_tr_term = 0
-        for i in range(S):
+        for i in range(self.S):
             z = np.random.randn(N)
             q = self._conjugate_gradient(X=X, b=z, theta=theta, sigma=sigma)
 
             K, C, inv_C, dK_dtheta = self._find_exact_matrices(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
-            #final_tr_term = final_tr_term + z @ inv_C @ dK_dtheta @ z
-            #final_tr_term = final_tr_term + z @ inv_C @ self._mv_dk(X=X, d_dash=d_dash, v=z, theta=theta)
             final_tr_term = final_tr_term + q @ self._mv_dk(X=X, d_dash=d_dash, v=z, theta=theta)
   
-        final_tr_term /= S
+        final_tr_term /= self.S
         return final_tr_term
+
+    def dlogp(self, X, y, theta, sigma):
+        # Note; currently only w.r.t. theta
+
+        g = np.zeros(np.shape(X)[1])
+        alpha = self._conjugate_gradient(X=X, b=y, theta=theta, sigma=sigma)
+        for d_dash in range(np.shape(X)[1]):
+            g[d_dash] = -0.5 * self._tr_invK_dK(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
+            g[d_dash] = g[d_dash] + 0.5 * alpha @ self._mv_dk(X=X, d_dash=d_dash, v=alpha, theta=theta)      
+        return g
 
     def _find_exact_matrices(self, X, theta, sigma, d_dash):
         # Only used for tests
