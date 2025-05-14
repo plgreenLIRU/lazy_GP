@@ -101,6 +101,6 @@ def test_tr_invK_dK():
     K, C, inv_C, dK_dtheta = gp._find_exact_matrices(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
 
     exact_term = np.trace(inv_C @ dK_dtheta)
-    mc_estimate = gp._tr_invK_dK(X=X, theta=theta, sigma=sigma, d_dash=d_dash, S=10)
+    mc_estimate = gp._tr_invK_dK(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
 
     assert np.allclose(exact_term, mc_estimate, rtol=0.05)
