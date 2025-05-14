@@ -1,9 +1,13 @@
 import numpy as np
+import time
 
 class GP():
     """
     A class implementing a lazy Gaussian Process (GP) with RBF ARD kernel.
     """
+    def __init__(self, S=10, tol=0.001):
+        self.tol = tol
+        self.S = S
 
     def _mv_k(self, X1, X2, v, theta, sigma, X1_equal_X2):
         """
@@ -36,7 +40,7 @@ class GP():
         for n in range(N1):
             k_row = np.zeros(N2)
             for d in range(D):
-                sq_dist = (X1[n, d] - X2[:, d])**2
+                sq_dist = (X1[n, d] - X2[:, d].T)**2
                 k_row = k_row - 1 / (2 * theta[d]**2) * sq_dist
             k_row = np.exp(k_row)
             if X1_equal_X2:
@@ -44,7 +48,108 @@ class GP():
             result[n] = np.dot(k_row, v)
         return result
 
-    def _conjugate_gradient(self, X, b, theta, sigma, tol, sol0=None):
+    def _mv_dk(self, X, d_dash, v, theta):
+        """
+        Lazily computes the derivative of the kernel matrix with respect to a specific 
+        length-scale parameter (theta[d_dash]) and multiplies it by a vector v.
+
+        Parameters:
+        - X: np.ndarray, shape (N, D)
+            Input points.
+        - d_dash: int
+            Index of the length-scale parameter with respect to which the derivative is computed.
+        - v: np.ndarray, shape (N,)
+            Vector to multiply with the derivative of the kernel matrix.
+        - theta: np.ndarray, shape (D,)
+            Length-scale parameters for the RBF kernel.
+
+        Returns:
+        - result: np.ndarray, shape (N,)
+            Result of the matrix-vector multiplication with the derivative of the kernel matrix.
+        """
+
+        N, D = X.shape
+        result = np.zeros(N)    
+        for i in range(N):
+            dk_row = np.zeros(N)
+            for d in range(D):
+                dk_row = dk_row - 0.5 * (X[i, d] - X[:, d])**2
+            dk_row = np.exp(dk_row)
+            dk_row = dk_row * theta[d_dash]**-3 * (X[i, d_dash] - X[:, d_dash].T)**2
+            result[i] = np.dot(dk_row, v)
+        return result
+
+    def _tr_invK_dK(self, X, theta, sigma, d_dash):
+        """
+        Approximates the trace of the product of the inverse kernel matrix and 
+        the derivative of the kernel matrix with respect to a specific length-scale parameter.
+        Is needed as part of evaluating the gradient of the log-likelihood.
+
+        Parameters:
+        - X: np.ndarray, shape (N, D)
+            Input points.
+        - theta: np.ndarray, shape (D,)
+            Length-scale parameters for the RBF kernel.
+        - sigma: float
+            Noise standard deviation.
+        - d_dash: int
+            Index of the length-scale parameter with respect to which the derivative is computed.
+
+        Returns:
+        - final_tr_term: float
+            Approximated trace term.
+        """        
+        N = X.shape[0]
+        final_tr_term = 0
+        for i in range(self.S):
+            z = np.random.randn(N)
+            q = self._conjugate_gradient(X=X, b=z, theta=theta, sigma=sigma)
+
+            K, C, inv_C, dK_dtheta = self._find_exact_matrices(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
+            final_tr_term = final_tr_term + q @ self._mv_dk(X=X, d_dash=d_dash, v=z, theta=theta)
+  
+        final_tr_term /= self.S
+        return final_tr_term
+
+    def dlogp(self, X, y, theta, sigma):
+        # Note; currently only w.r.t. theta
+
+        g = np.zeros(np.shape(X)[1])
+        alpha = self._conjugate_gradient(X=X, b=y, theta=theta, sigma=sigma)
+        for d_dash in range(np.shape(X)[1]):
+            g[d_dash] = -0.5 * self._tr_invK_dK(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
+            g[d_dash] = g[d_dash] + 0.5 * alpha @ self._mv_dk(X=X, d_dash=d_dash, v=alpha, theta=theta)      
+        return g
+
+    def _exact_dlogp(self, X, y, theta, sigma):
+        # Used for testing
+
+        g = np.zeros(np.shape(X)[1])
+        for d_dash in range(np.shape(X)[1]):
+            K, C, inv_C, dK_dtheta = self._find_exact_matrices(X, theta, sigma, d_dash)
+            g[d_dash] = -0.5 * np.trace(inv_C @ dK_dtheta)
+            alpha = inv_C @ y
+            g[d_dash] = g[d_dash] + 0.5 * alpha.T @ dK_dtheta @ alpha
+        return g
+        
+    def _find_exact_matrices(self, X, theta, sigma, d_dash):
+        # Only used for tests
+
+        N, D = np.shape(X)
+        K = np.ones([N, N])
+        dK_dtheta = np.zeros([N, N])
+        for i in range(N):
+            for j in range(N):
+                dK_dtheta[i, j] = theta[d_dash]**-3
+                for d in range(D):
+                    K[i, j] *= np.exp(-1 / (2 * theta[d]**2) * (X[i, d] - X[j, d])**2)
+                    dK_dtheta[i, j] *= np.exp(-0.5 * (X[i, d] - X[j, d])**2)
+                dK_dtheta[i, j] *= (X[i, d_dash] - X[j, d_dash])**2
+        C = K + np.eye(N) * sigma**2
+        inv_C = np.linalg.inv(C)
+        return K, C, inv_C, dK_dtheta
+
+    def _conjugate_gradient(self, X, b, theta, sigma, sol0=None, verbose=False):
         """
         Solves the linear system K(X, X; theta) @ sol = b using the conjugate gradient method.
 
@@ -83,15 +188,29 @@ class GP():
             sol += alpha * p
             r -= alpha * Kp
             r_new = np.dot(r, r)
-            if np.sqrt(r_new) < tol:
+            if np.sqrt(r_new) < self.tol:
                 break
             p = r + (r_new / r_old) * p
             r_old = r_new
-
-        print(f"CG converged in {i+1} iterations.")
+        
+        if verbose:
+            print(f"CG converged in {i+1} iterations.")
         return sol
 
-    def set_hyperparameters(self, X, y, theta, sigma, tol=0.001):
+    def train(self, X, y, theta, sigma, learning_rate=0.001, N_itt=10):
+        # Doesn't tune sigma at the moment
+
+        for i in range(N_itt):
+            t0 = time.time()
+            g = self.dlogp(X=X, y=y, theta=theta, sigma=sigma)
+            dt = time.time() - t0
+            theta = theta + learning_rate * g
+            print("Iteration", i, "theta = ", theta, "gradient evaluation took", dt, "seconds")
+
+        self.set_hyperparameters(X=X, y=y, theta=theta, sigma=sigma)
+        print("Finished training")
+
+    def set_hyperparameters(self, X, y, theta, sigma):
         """
         Sets the hyperparameters and precomputes the alpha vector for predictions.
 
@@ -109,7 +228,7 @@ class GP():
         self.y = y
         self.theta = theta
         self.sigma = sigma
-        self.alpha = self._conjugate_gradient(X=self.X, b=self.y, theta=self.theta, sigma=self.sigma, tol=tol)
+        self.alpha = self._conjugate_gradient(X=self.X, b=self.y, theta=self.theta, sigma=self.sigma)
 
     def predict(self, X_star):
         """
