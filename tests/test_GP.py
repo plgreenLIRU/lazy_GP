@@ -2,6 +2,15 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 from lazy_GP import GP
 
+def generate_1D_data():
+
+    X = np.linspace(0, 10, 50)[:, np.newaxis]
+    X_star = np.linspace(0, 10, 100)[:, np.newaxis]
+    
+    sigma = 0.01
+    y = np.sin(X[:, 0]) + sigma * np.random.randn(len(X))
+    y_star = np.sin(X_star[:, 0]) + sigma * np.random.randn(len(X_star))
+    return X, X_star, y, y_star
 
 def generate_2D_data():
 
@@ -24,11 +33,7 @@ def test_1D_regression():
 
     # Create data
     np.random.seed(42)
-    sigma = 0.05
-    X = np.linspace(0, 10, 50)[:, np.newaxis]
-    X_star = np.linspace(0, 10, 100)[:, np.newaxis]
-    y = np.sin(X[:, 0]) + sigma * np.random.randn(len(X))
-    y_star = np.sin(X_star[:, 0]) + sigma * np.random.randn(len(X_star))
+    X, X_star, y, y_star = generate_1D_data()
 
     # Fit model
     m = GP()
