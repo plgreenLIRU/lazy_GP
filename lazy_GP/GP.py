@@ -114,7 +114,7 @@ class GP():
         # Note; currently only w.r.t. theta
 
         g = np.zeros(np.shape(X)[1])
-        alpha = self._conjugate_gradient(X=X, b=y[:, 0], theta=theta, sigma=sigma)
+        alpha = self._conjugate_gradient(X=X, b=y, theta=theta, sigma=sigma)
         for d_dash in range(np.shape(X)[1]):
             g[d_dash] = -0.5 * self._tr_invK_dK(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
             g[d_dash] = g[d_dash] + 0.5 * alpha @ self._mv_dk(X=X, d_dash=d_dash, v=alpha, theta=theta)      

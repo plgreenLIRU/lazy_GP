@@ -109,3 +109,19 @@ def test_tr_invK_dK():
     mc_estimate = gp._tr_invK_dK(X=X, theta=theta, sigma=sigma, d_dash=d_dash)
 
     assert np.allclose(exact_term, mc_estimate, rtol=0.05)
+
+def test_dlogp():
+
+    # Create data
+    np.random.seed(42)
+    X, X_star, y, y_star = generate_1D_data()
+
+    # Initialise model
+    gp = GP()
+
+    theta = 1.5
+    sigma = 0.01
+    grad = gp.dlogp(X=X, y=y, theta=np.array([theta]), sigma=sigma)
+    grad_exact = gp._exact_dlogp(X=X, y=y, theta=np.array([theta]), sigma=sigma)
+
+    assert np.allclose(grad, grad_exact, rtol=0.1)
