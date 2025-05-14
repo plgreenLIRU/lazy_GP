@@ -196,6 +196,17 @@ class GP():
             print(f"CG converged in {i+1} iterations.")
         return sol
 
+    def train(self, X, y, theta, sigma, learning_rate=0.001, N_itt=10):
+        # Doesn't tune sigma at the moment
+
+        for i in range(N_itt):
+            g = self.dlogp(X=X, y=y, theta=theta, sigma=sigma)
+            theta = theta + learning_rate * g
+            print("Iteration", i, "theta = ", theta)
+
+        self.set_hyperparameters(X=X, y=y, theta=theta, sigma=sigma)
+        print("Finished training")
+
     def set_hyperparameters(self, X, y, theta, sigma):
         """
         Sets the hyperparameters and precomputes the alpha vector for predictions.
