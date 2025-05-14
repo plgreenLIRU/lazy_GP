@@ -1,4 +1,5 @@
 import numpy as np
+import time
 
 class GP():
     """
@@ -200,9 +201,11 @@ class GP():
         # Doesn't tune sigma at the moment
 
         for i in range(N_itt):
+            t0 = time.time()
             g = self.dlogp(X=X, y=y, theta=theta, sigma=sigma)
+            dt = time.time() - t0
             theta = theta + learning_rate * g
-            print("Iteration", i, "theta = ", theta)
+            print("Iteration", i, "theta = ", theta, "gradient evaluation took", dt, "seconds")
 
         self.set_hyperparameters(X=X, y=y, theta=theta, sigma=sigma)
         print("Finished training")
